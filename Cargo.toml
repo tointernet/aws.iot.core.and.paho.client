@@ -1,0 +1,14 @@
+[package]
+name = "mqtt-broker-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.21.2", features = ["full"] }
+paho-mqtt = { version = "0.11" }
+futures-util = { version = "0.3.25"}
+tracing = { version = "0.1.37" }
+serde_json = { version = "1.0.87" }
+serde = { version = "1.0.147", features = ["derive"] }
+tracing-bunyan-formatter = { version = "0.3.4" }
+tracing-subscriber = { version = "0.3.16" }
