@@ -1,8 +1,8 @@
 use futures_util::StreamExt;
-use mqtt::{AsyncClient, ConnectOptions, MessageBuilder, SslOptionsBuilder};
+use mqtt::{AsyncClient, ConnectOptions, MessageBuilder, SslOptionsBuilder, SslVersion};
 use paho_mqtt as mqtt;
 use std::time::Duration;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use tracing_bunyan_formatter::BunyanFormattingLayer;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 
@@ -12,6 +12,8 @@ async fn main() -> Result<(), ()> {
 
     let (mut mqtt_client, conn_opts) = mqtt_client()?;
 
+    debug!("connection to mqtt...");
+
     let mut stream = mqtt_client.get_stream(2048);
 
     mqtt_client.connect(conn_opts.clone()).await.map_err(|e| {
@@ -19,7 +21,14 @@ async fn main() -> Result<(), ()> {
         ()
     })?;
 
+    debug!("mqtt was connected");
+
     publisher(&mqtt_client);
+
+    mqtt_client.subscribe("/topic/#", 1).await.map_err(|e| {
+        error!(error = e.to_string(), "error to subscribe");
+        ()
+    })?;
 
     while let Some(delivery) = stream.next().await {
         match delivery {
@@ -41,27 +50,38 @@ fn logger() -> Result<(), ()> {
 }
 
 fn mqtt_client() -> Result<(AsyncClient, ConnectOptions), ()> {
+    debug!("creating to mqtt client...");
+
     let opts = mqtt::CreateOptionsBuilder::new()
-        .server_uri("")
-        .client_id("")
+        .server_uri("a1omve0r7ixfps-ats.iot.us-east-1.amazonaws.com")
+        .client_id("SomeThing")
+        .mqtt_version(4)
         .finalize();
 
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
-        .keep_alive_interval(Duration::from_secs(60))
+        .keep_alive_interval(Duration::from_secs(10))
         .mqtt_version(mqtt::MQTT_VERSION_3_1_1)
         .clean_session(false)
-        .user_name("")
-        .password("")
+        // .user_name("")
+        // .password("")
         .ssl_options(
             SslOptionsBuilder::new()
-                .ca_path("./aws-root-ca.crt")
+                .ca_path("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-root-ca.pem")
                 .unwrap()
-                .key_store("./aws-thing-cert.pem")
+                // .trust_store(
+                //     "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-cert.pem",
+                // )
+                // .unwrap()
+                .key_store("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-cert.pem")
                 .unwrap()
-                .private_key("./aws-thing-private.key")
+                .private_key(
+                    "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-private.key",
+                )
                 .unwrap()
                 .private_key_password("")
                 .enable_server_cert_auth(false)
+                .ssl_version(SslVersion::Tls_1_2)
+                .enabled_cipher_suites("NONE")
                 .verify(false)
                 .finalize(),
         )
@@ -71,6 +91,8 @@ fn mqtt_client() -> Result<(AsyncClient, ConnectOptions), ()> {
         error!(error = e.to_string(), "error to create mqtt client");
         ()
     })?;
+
+    debug!("mqtt client was created");
 
     Ok((client, conn_opts))
 }
@@ -83,18 +105,22 @@ fn publisher(client: &AsyncClient) {
             loop {
                 tokio::time::sleep(Duration::from_secs(1)).await;
 
+                debug!("publishing to mqtt...");
+
                 match clone
                     .clone()
                     .publish(
                         MessageBuilder::new()
-                            .topic("/test")
+                            .topic("/test/first")
                             .payload(vec![])
                             .qos(1)
                             .finalize(),
                     )
                     .await
                 {
-                    Ok(_) => {}
+                    Ok(_) => {
+                        debug!("published to mqtt");
+                    }
                     Err(e) => {
                         error!(error = e.to_string(), "error to publish");
                     }
