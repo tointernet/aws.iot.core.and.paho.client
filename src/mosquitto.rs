@@ -1,5 +1,5 @@
 use futures_util::StreamExt;
-use mqtt::{AsyncClient, ConnectOptions, MessageBuilder, SslOptionsBuilder, SslVersion, UserData};
+use mqtt::{AsyncClient, ConnectOptions, MessageBuilder, SslOptionsBuilder, SslVersion};
 use paho_mqtt as mqtt;
 use std::time::Duration;
 use tracing::{debug, error, info};
@@ -42,7 +42,7 @@ async fn main() -> Result<(), ()> {
 
 fn logger() -> Result<(), ()> {
     tracing::subscriber::set_global_default(tracing_subscriber::registry().with(
-        BunyanFormattingLayer::new("aws-broker".to_owned(), std::io::stdout),
+        BunyanFormattingLayer::new("broker".to_owned(), std::io::stdout),
     ))
     .map_err(|_| ())?;
 
@@ -53,8 +53,8 @@ fn mqtt_client() -> Result<(AsyncClient, ConnectOptions), ()> {
     debug!("creating to mqtt client...");
 
     let opts = mqtt::CreateOptionsBuilder::new()
-        .server_uri("ssl://a1omve0r7ixfps-ats.iot.us-east-1.amazonaws.com:443")
-        .client_id("SomeThing")
+        .server_uri("ssl://test.mosquitto.org:8884")
+        .client_id("rust_client_id")
         .mqtt_version(4)
         .finalize();
 
@@ -62,24 +62,24 @@ fn mqtt_client() -> Result<(AsyncClient, ConnectOptions), ()> {
         .keep_alive_interval(Duration::from_secs(10))
         .mqtt_version(mqtt::MQTT_VERSION_3_1_1)
         .clean_session(false)
-        // .user_name("")
-        // .password("")
         .ssl_options(
             SslOptionsBuilder::new()
-                .alpn_protos(&["x-amzn-mqtt-ca"])
-                .ca_path("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-root-ca.pem")
+                .ca_path("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/mosquitto.org.pem")
                 .unwrap()
-                // .trust_store(
-                //     "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-cert.pem",
-                // )
-                // .unwrap()
-                .key_store("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-cert.pem")
-                .unwrap()
-                .private_key(
-                    "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-private.key",
+                .trust_store(
+                    "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/mosquitto.test.client.pem",
                 )
                 .unwrap()
-                .enable_server_cert_auth(true)
+                // .key_store(
+                //     "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/mosquitto.test.client.pem",
+                // )
+                // .unwrap()
+                .private_key(
+                    "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/mosquitto.test.private.key",
+                )
+                .unwrap()
+                .private_key_password("")
+                .enable_server_cert_auth(false)
                 .ssl_version(SslVersion::Tls_1_2)
                 .verify(false)
                 .finalize(),

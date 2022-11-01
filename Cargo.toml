@@ -3,6 +3,10 @@ name = "mqtt-broker-test"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "mosquitto"
+path = "src/mosquitto.rs"
+
 [dependencies]
 tokio = { version = "1.21.2", features = ["full"] }
 paho-mqtt = { version = "0.11" }
