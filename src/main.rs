@@ -1,5 +1,5 @@
 use futures_util::StreamExt;
-use mqtt::{AsyncClient, ConnectOptions, MessageBuilder, SslOptionsBuilder, SslVersion, UserData};
+use mqtt::{AsyncClient, ConnectOptions, MessageBuilder, SslOptionsBuilder, SslVersion};
 use paho_mqtt as mqtt;
 use std::time::Duration;
 use tracing::{debug, error, info};
@@ -55,33 +55,23 @@ fn mqtt_client() -> Result<(AsyncClient, ConnectOptions), ()> {
     let opts = mqtt::CreateOptionsBuilder::new()
         .server_uri("ssl://a1omve0r7ixfps-ats.iot.us-east-1.amazonaws.com:443")
         .client_id("SomeThing")
-        .mqtt_version(4)
         .finalize();
 
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
-        .keep_alive_interval(Duration::from_secs(10))
+        // .keep_alive_interval(Duration::from_secs(10))
         .mqtt_version(mqtt::MQTT_VERSION_3_1_1)
-        .clean_session(false)
-        // .user_name("")
-        // .password("")
+        // .clean_session(false)
         .ssl_options(
             SslOptionsBuilder::new()
                 .alpn_protos(&["x-amzn-mqtt-ca"])
                 .ca_path("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-root-ca.pem")
                 .unwrap()
-                // .trust_store(
-                //     "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-cert.pem",
-                // )
-                // .unwrap()
                 .key_store("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-cert.pem")
                 .unwrap()
                 .private_key(
                     "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-private.key",
                 )
                 .unwrap()
-                .enable_server_cert_auth(true)
-                .ssl_version(SslVersion::Tls_1_2)
-                .verify(false)
                 .finalize(),
         )
         .finalize();

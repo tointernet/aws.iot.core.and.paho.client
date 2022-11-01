@@ -44,13 +44,16 @@ def on_connect(client, userdata, flags, code):
 if __name__ == '__main__':
     topic = "/test/date"
     try:
+        ssl_context= ssl_alpn()
+
         mqttc = mqtt.Client("SomeThing")
         mqttc.on_connect = on_connect
-        ssl_context= ssl_alpn()
         mqttc.tls_set_context(context=ssl_context)
+
         logger.info("start connect")
         mqttc.connect(aws_iot_endpoint, port=443)
         logger.info("connect success")
+
         mqttc.loop_start()
 
         while True:
@@ -61,6 +64,6 @@ if __name__ == '__main__':
 
     except Exception as e:
         logger.error("exception main()")
-        logger.error("e obj:{}".format(vars(e)))
+        logger.error("error obj:{}".format(vars(e)))
         logger.error("message:{}".format(e.message))
         traceback.print_exc(file=sys.stdout)
