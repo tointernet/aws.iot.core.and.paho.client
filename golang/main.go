@@ -3,55 +3,107 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
+	"errors"
 	"io/ioutil"
-	"log"
+	"os"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"go.uber.org/zap"
+)
+
+var (
+	log, _ = zap.NewDevelopment()
+	logger = log.Sugar().Named("go-aws-iot")
 )
 
 func main() {
-	tlsConfig, err := newTLSConfig()
+	logger.Debug("initializing...")
+
+	client, err := mqttClient()
+
 	if err != nil {
-		panic(err)
+		logger.Panic(err)
 	}
 
-	opts := mqtt.NewClientOptions().
-		SetClientID("SomeThing").
-		AddBroker(fmt.Sprintf("ssl://%s:%d", "a1omve0r7ixfps-ats.iot.us-east-1.amazonaws.com", 443)).
-		SetTLSConfig(tlsConfig)
-
-	client := mqtt.NewClient(opts)
-
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		panic(fmt.Sprintf("failed to connect broker: %v", token.Error()))
+		logger.Panicf("failed to connect broker: %v", token.Error())
 	}
 
 	defer client.Disconnect(250)
 
 	for {
 		time.Sleep(time.Second * 5)
-		println("connected")
+		logger.Debug("connected")
 	}
 }
 
-func newTLSConfig() (*tls.Config, error) {
-	rootCA, err := ioutil.ReadFile("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-root-ca.pem")
+func mqttClient() (mqtt.Client, error) {
+	tls, err := tlsConfig()
+
 	if err != nil {
+		logger.Errorw("error to create tls config", zap.Error(err))
 		return nil, err
 	}
+
+	clientId, awsEndpoint := "", ""
+
+	if clientId = os.Getenv("AWS_IOT_DEVICE_NAME"); clientId == "" {
+		return nil, errors.New("invalid AWS_IOT_DEVICE_NAME arg")
+	}
+
+	if awsEndpoint = os.Getenv("AWS_IOT_DEVICE_DATA_ENDPOINT"); clientId == "" {
+		return nil, errors.New("invalid AWS_IOT_DEVICE_DATA_ENDPOINT arg")
+	}
+
+	logger.Debug("connection to mqtt...")
+
+	opts := mqtt.NewClientOptions().
+		SetClientID(clientId).
+		AddBroker(awsEndpoint).
+		SetTLSConfig(tls)
+
+	client := mqtt.NewClient(opts)
+
+	logger.Debug("mqtt client connected")
+
+	return client, nil
+}
+
+func tlsConfig() (*tls.Config, error) {
+	rootCAPath, certPath, privateKeyPath := "", "", ""
+
+	if rootCAPath = os.Getenv("AWS_ROOT_CA_PATH"); rootCAPath == "" {
+		return nil, errors.New("invalid AWS_ROOT_CA_PATH arg")
+	}
+
+	if certPath = os.Getenv("AWS_THING_CERT_PATH"); certPath == "" {
+		return nil, errors.New("invalid AWS_THING_CERT_PATH arg")
+	}
+
+	if privateKeyPath = os.Getenv("AWS_THING_PRIVATE_KEY_PATH"); privateKeyPath == "" {
+		return nil, errors.New("invalid AWS_THING_PRIVATE_KEY_PATH arg")
+	}
+
+	rootCA, err := ioutil.ReadFile(rootCAPath)
+
+	if err != nil {
+		logger.Errorw("error to read root CA", zap.Error(err))
+		return nil, err
+	}
+
 	certpool := x509.NewCertPool()
 	certpool.AppendCertsFromPEM(rootCA)
-	cert, err := tls.LoadX509KeyPair("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-cert.pem", "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-private.key")
+	cert, err := tls.LoadX509KeyPair(certPath, privateKeyPath)
+
 	if err != nil {
-		log.Print("error to load cert", "error", err)
+		logger.Errorw("error to load cert", zap.Error(err))
 		return nil, err
 	}
 
 	cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
 	if err != nil {
-		log.Print("error to parse cert", "error", err)
+		logger.Errorw("error to parse cert", zap.Error(err))
 		return nil, err
 	}
 
