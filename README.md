@@ -2,12 +2,9 @@
 
 ## Table of content
 
-- [Requirements](#requirements)
 - [AWS Setup](#aws-setup)
 - [Rust Exemple](#rust-example)
 - [GoLang Exemple](#golang-exemple)
-
-### Requirements
 
 ### AWS Setup
 
@@ -24,7 +21,7 @@
 make run-rust
 ```
 
-- The exemplo code can be found [here](https://github.com/tointernet/aws.iot.core.and.paho.client/tree/main/rust)
+- The exemplo code can be find [here](https://github.com/tointernet/aws.iot.core.and.paho.client/tree/main/rust)
 
 ### GoLang Exemple
 > To execute one of the exemples you must configure your AWS IoT Core following the [AWS Setup](#aws-setup) step.
@@ -39,5 +36,5 @@ make run-rust
 make run-go
 ```
 
-- The exemplo code can be found [here](https://github.com/tointernet/aws.iot.core.and.paho.client/tree/main/golang)
+- The exemplo code can be find [here](https://github.com/tointernet/aws.iot.core.and.paho.client/tree/main/golang)
 
