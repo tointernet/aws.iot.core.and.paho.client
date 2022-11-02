@@ -27,7 +27,7 @@ func main() {
 	}
 
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		logger.Panicf("failed to connect broker: %v", token.Error())
+		logger.Panicw("failed to connect broker", zap.Error(token.Error()))
 	}
 
 	defer client.Disconnect(250)
@@ -43,7 +43,7 @@ func main() {
 
 	logger.Debug("subscribing to a topic")
 
-	client.Subscribe("test/first", byte(1), func(c mqtt.Client, m mqtt.Message) {
+	client.Subscribe(topic, byte(0), func(c mqtt.Client, m mqtt.Message) {
 		logger.Debugw("received msg", zap.String(topic, m.Topic()), "msg", m.Payload())
 	})
 
