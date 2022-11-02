@@ -1,7 +1,7 @@
 use futures_util::StreamExt;
 use mqtt::{AsyncClient, ConnectOptions, MessageBuilder, SslOptionsBuilder, SslVersion};
 use paho_mqtt as mqtt;
-use std::time::Duration;
+use std::{env, time::Duration};
 use tracing::{debug, error, info};
 use tracing_bunyan_formatter::BunyanFormattingLayer;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
@@ -17,7 +17,7 @@ async fn main() -> Result<(), ()> {
     let mut stream = mqtt_client.get_stream(2048);
 
     mqtt_client.connect(conn_opts.clone()).await.map_err(|e| {
-        error!(error = e.to_string(), "error to create mqtt client");
+        error!(error = e.to_string(), "error to connect");
         ()
     })?;
 
@@ -25,7 +25,8 @@ async fn main() -> Result<(), ()> {
 
     publisher(&mqtt_client);
 
-    mqtt_client.subscribe("/topic/#", 1).await.map_err(|e| {
+    let topic = env::var("AWS_IOT_TOPIC_TO_SUBSCRIBE").unwrap();
+    mqtt_client.subscribe(topic, 0).await.map_err(|e| {
         error!(error = e.to_string(), "error to subscribe");
         ()
     })?;
@@ -42,7 +43,7 @@ async fn main() -> Result<(), ()> {
 
 fn logger() -> Result<(), ()> {
     tracing::subscriber::set_global_default(tracing_subscriber::registry().with(
-        BunyanFormattingLayer::new("broker".to_owned(), std::io::stdout),
+        BunyanFormattingLayer::new("aws-broker".to_owned(), std::io::stdout),
     ))
     .map_err(|_| ())?;
 
@@ -52,36 +53,32 @@ fn logger() -> Result<(), ()> {
 fn mqtt_client() -> Result<(AsyncClient, ConnectOptions), ()> {
     debug!("creating to mqtt client...");
 
+    let server_uri = env::var("AWS_IOT_DEVICE_DATA_ENDPOINT").unwrap();
+    let client_id = env::var("AWS_IOT_DEVICE_NAME").unwrap();
+    let trust_store = env::var("AWS_ROOT_CA_PATH").unwrap();
+    let key_store = env::var("AWS_THING_CERT_PATH").unwrap();
+    let private_key = env::var("AWS_THING_PRIVATE_KEY_PATH").unwrap();
+
     let opts = mqtt::CreateOptionsBuilder::new()
-        .server_uri("ssl://test.mosquitto.org:8884")
-        .client_id("rust_client_id")
-        .mqtt_version(4)
+        .server_uri(server_uri)
+        .client_id(client_id)
         .finalize();
 
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
         .keep_alive_interval(Duration::from_secs(10))
         .mqtt_version(mqtt::MQTT_VERSION_3_1_1)
-        .clean_session(false)
+        .clean_session(true)
         .ssl_options(
             SslOptionsBuilder::new()
-                .ca_path("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/mosquitto.org.pem")
+                .alpn_protos(&["x-amzn-mqtt-ca"])
+                .trust_store(trust_store)
                 .unwrap()
-                .trust_store(
-                    "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/mosquitto.test.client.pem",
-                )
+                .key_store(key_store)
                 .unwrap()
-                // .key_store(
-                //     "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/mosquitto.test.client.pem",
-                // )
-                // .unwrap()
-                .private_key(
-                    "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/mosquitto.test.private.key",
-                )
+                .private_key(private_key)
                 .unwrap()
-                .private_key_password("")
-                .enable_server_cert_auth(false)
                 .ssl_version(SslVersion::Tls_1_2)
-                .verify(false)
+                .verify(true)
                 .finalize(),
         )
         .finalize();
@@ -97,6 +94,8 @@ fn mqtt_client() -> Result<(AsyncClient, ConnectOptions), ()> {
 }
 
 fn publisher(client: &AsyncClient) {
+    let topic = env::var("AWS_IOT_TOPIC_TO_PUBLISH").unwrap();
+
     tokio::spawn({
         let clone = client.clone();
 
@@ -110,7 +109,7 @@ fn publisher(client: &AsyncClient) {
                     .clone()
                     .publish(
                         MessageBuilder::new()
-                            .topic("/test/first")
+                            .topic(&topic)
                             .payload(vec![])
                             .qos(1)
                             .finalize(),
