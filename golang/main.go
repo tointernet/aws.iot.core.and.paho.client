@@ -20,8 +20,8 @@ var (
 func main() {
 	logger.Debug("initializing...")
 
+	/// MQTT CLIENT AND CONNECTION
 	client, err := mqttClient()
-
 	if err != nil {
 		logger.Panic(err)
 	}
@@ -31,11 +31,27 @@ func main() {
 	}
 
 	defer client.Disconnect(250)
+	///
 
-	for {
-		time.Sleep(time.Second * 5)
-		logger.Debug("connected")
+	/// MQTT PUBLISHER AND CONSUMER
+	publisher(client)
+
+	topic := ""
+	if topic = os.Getenv("AWS_IOT_TOPIC_TO_SUBSCRIBE"); topic == "" {
+		logger.Panic("invalid AWS_IOT_TOPIC_TO_SUBSCRIBE arg")
 	}
+
+	logger.Debug("subscribing to a topic")
+
+	client.Subscribe("test/first", byte(1), func(c mqtt.Client, m mqtt.Message) {
+		logger.Debugw("received msg", zap.String(topic, m.Topic()), "msg", m.Payload())
+	})
+
+	logger.Debug("subscribed")
+	///
+
+	forever := make(chan bool)
+	<-forever
 }
 
 func mqttClient() (mqtt.Client, error) {
@@ -113,4 +129,26 @@ func tlsConfig() (*tls.Config, error) {
 		Certificates:       []tls.Certificate{cert},
 		NextProtos:         []string{"x-amzn-mqtt-ca"},
 	}, nil
+}
+
+type message struct {
+	Data string `json:"data"`
+}
+
+func publisher(client mqtt.Client) error {
+	topic := ""
+	if topic = os.Getenv("AWS_IOT_TOPIC_TO_PUBLISH"); topic == "" {
+		return errors.New("invalid AWS_IOT_TOPIC_TO_PUBLISH arg")
+	}
+
+	go func() {
+		for {
+			time.Sleep(time.Second * 10)
+			logger.Debug("publishing to mqtt")
+			client.Publish(topic, byte(0), false, &message{"hello"})
+			logger.Debug("published")
+		}
+	}()
+
+	return nil
 }
