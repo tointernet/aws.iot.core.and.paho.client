@@ -17,7 +17,7 @@ async fn main() -> Result<(), ()> {
     let mut stream = mqtt_client.get_stream(2048);
 
     mqtt_client.connect(conn_opts.clone()).await.map_err(|e| {
-        error!(error = e.to_string(), "error to create mqtt client");
+        error!(error = e.to_string(), "error to connect");
         ()
     })?;
 
@@ -25,7 +25,7 @@ async fn main() -> Result<(), ()> {
 
     publisher(&mqtt_client);
 
-    mqtt_client.subscribe("/topic/#", 1).await.map_err(|e| {
+    mqtt_client.subscribe("test/#", 0).await.map_err(|e| {
         error!(error = e.to_string(), "error to subscribe");
         ()
     })?;
@@ -58,13 +58,13 @@ fn mqtt_client() -> Result<(AsyncClient, ConnectOptions), ()> {
         .finalize();
 
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
-        // .keep_alive_interval(Duration::from_secs(10))
+        .keep_alive_interval(Duration::from_secs(10))
         .mqtt_version(mqtt::MQTT_VERSION_3_1_1)
-        // .clean_session(false)
+        .clean_session(true)
         .ssl_options(
             SslOptionsBuilder::new()
                 .alpn_protos(&["x-amzn-mqtt-ca"])
-                .ca_path("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-root-ca.pem")
+                .trust_store("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-root-ca.pem")
                 .unwrap()
                 .key_store("/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-cert.pem")
                 .unwrap()
@@ -72,6 +72,8 @@ fn mqtt_client() -> Result<(AsyncClient, ConnectOptions), ()> {
                     "/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-private.key",
                 )
                 .unwrap()
+                .ssl_version(SslVersion::Tls_1_2)
+                .verify(true)
                 .finalize(),
         )
         .finalize();
@@ -100,7 +102,7 @@ fn publisher(client: &AsyncClient) {
                     .clone()
                     .publish(
                         MessageBuilder::new()
-                            .topic("/test/first")
+                            .topic("test/first")
                             .payload(vec![])
                             .qos(1)
                             .finalize(),
