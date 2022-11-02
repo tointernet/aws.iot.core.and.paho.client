@@ -1,8 +1,8 @@
-AwsIoTDeviceEnpoint=ssl://a1omve0r7ixfps-ats.iot.us-east-1.amazonaws.com:443
-AwsIoTDeviceName=SomeThing
-AwsRootCAPath=/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-root-ca.pem 
-AwsThingCertPath=/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-cert.pem
-AwsThingPrivateKeyPath=/home/ralvescosta/Desktop/ToI/aws/mqtt-broker-test/aws-thing-private.key
+AwsIoTDeviceEnpoint=ssl://YOUR_ENDPOINT:443
+AwsIoTDeviceName=YOUT_DEVICE
+AwsRootCAPath=YOUR_PATH.pem 
+AwsThingCertPath=YOUR_PATH.pem
+AwsThingPrivateKeyPath=YOUR_PATH.key
 AwsIoTTopicToPublish=test/first
 AwsIoTTopicToSubiscribe=test/first
 
